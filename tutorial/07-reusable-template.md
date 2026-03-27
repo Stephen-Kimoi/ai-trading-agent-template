@@ -33,7 +33,7 @@ Implement `TradingStrategy` directly:
 
 ```typescript
 // src/agent/my-strategy.ts
-import { MarketData, TradeDecision, TradingStrategy } from "../types/index.js";
+import { MarketData, TradeDecision, TradingStrategy } from "../types/index";
 
 export class MyStrategy implements TradingStrategy {
   async analyze(data: MarketData): Promise<TradeDecision> {
@@ -56,7 +56,7 @@ Then in `src/agent/index.ts`, swap the strategy import:
 
 ```typescript
 // Before:
-import { MomentumStrategy } from "./strategy.js";
+import { MomentumStrategy } from "./strategy";
 const strategy = new MomentumStrategy(5, 100);
 
 // After:
@@ -72,7 +72,7 @@ That's it. Everything else — identity, vault, risk checks, Kraken execution, c
 
 ```typescript
 import Anthropic from "@anthropic-ai/sdk";
-import { MarketData, TradeDecision, TradingStrategy } from "../types/index.js";
+import { MarketData, TradeDecision, TradingStrategy } from "../types/index";
 
 export class ClaudeStrategy implements TradingStrategy {
   private client = new Anthropic();
@@ -108,7 +108,7 @@ Add to `.env`: `ANTHROPIC_API_KEY=your_key`
 
 ```typescript
 import Groq from "groq-sdk";
-import { MarketData, TradeDecision, TradingStrategy } from "../types/index.js";
+import { MarketData, TradeDecision, TradingStrategy } from "../types/index";
 
 export class GroqStrategy implements TradingStrategy {
   private client = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -158,12 +158,16 @@ export class GroqStrategy implements TradingStrategy {
 1. `cp .env.example .env` and fill in keys
 2. `npm install`
 3. `npx hardhat run scripts/deploy.ts --network sepolia` — deploy contracts
-4. Add contract addresses to `.env`
-5. `npx ts-node scripts/register-agent.ts` — register your agent
+4. Add all 5 contract addresses to `.env`
+5. `npm run register` — register your agent on-chain
 6. Add `AGENT_ID` to `.env`
 7. Write your strategy in `src/agent/my-strategy.ts`
 8. Swap the strategy import in `src/agent/index.ts`
-9. `npx ts-node scripts/run-agent.ts` — run with `KRAKEN_SANDBOX=true` first
+9. Run the agent and dashboard in two terminals:
+   ```bash
+   npm run run-agent    # Terminal 1
+   npm run dashboard    # Terminal 2 → http://localhost:3000
+   ```
 
 ---
 
@@ -173,8 +177,28 @@ When you're ready to trade for real:
 1. Set `KRAKEN_SANDBOX=false` in `.env`
 2. Ensure your vault has allocated capital for your agent
 3. Set sensible risk params via `setRiskParams()`
-4. Monitor `checkpoints.jsonl` for the signed audit trail
+4. Monitor the dashboard (`npm run dashboard`) for live decisions and signed checkpoints
+5. All checkpoints are also written to `checkpoints.jsonl` for offline audit
 
 ---
 
-Congratulations — you have a production-ready AI trading agent with on-chain identity, risk controls, and cryptographic explainability.
+## Dashboard
+
+The project ships with a live web dashboard that reads from `checkpoints.jsonl` and auto-refreshes every 5 seconds:
+
+```bash
+npm run dashboard   # → http://localhost:3000
+```
+
+It shows:
+- **Live BTC price** with tick-by-tick change
+- **Last decision** (HOLD / BUY / SELL) with colour indicator
+- **Price chart** of the last 20 ticks
+- **Agent info** — agentId, wallet, pair, checkpoint count
+- **Checkpoint feed** — every decision as a card with reasoning, confidence bar, and truncated EIP-712 signature
+
+Run it alongside `npm run run-agent` for a complete view of the agent in action.
+
+---
+
+Congratulations — you have a production-ready AI trading agent with on-chain identity, risk controls, cryptographic explainability, and a live dashboard.

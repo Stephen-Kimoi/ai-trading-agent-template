@@ -37,7 +37,7 @@ const domain = {
 
 const types = {
   TradeCheckpoint: [
-    { name: "agentId",           type: "bytes32" },
+    { name: "agentId",           type: "uint256" }, // ERC-721 token ID
     { name: "timestamp",         type: "uint256" },
     { name: "action",            type: "string"  },
     { name: "asset",             type: "string"  },
@@ -46,6 +46,7 @@ const types = {
     { name: "priceUsdScaled",    type: "uint256" }, // USD * 100
     { name: "reasoningHash",     type: "bytes32" }, // keccak256(reasoning)
     { name: "confidenceScaled",  type: "uint256" }, // confidence * 1000
+    { name: "intentHash",        type: "bytes32" }, // hash of the approved TradeIntent
   ],
 };
 ```

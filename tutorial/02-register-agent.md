@@ -84,7 +84,7 @@ Copy all five addresses to your `.env`.
 ## Step 3: Register your agent
 
 ```bash
-npx ts-node scripts/register-agent.ts
+npm run register
 ```
 
 Output:
@@ -98,11 +98,16 @@ AgentRegistry:   0xABC...
 [identity] Registration tx: 0xTXHASH...
 [identity] Agent registered! Token ID (agentId): 0
 [identity] Add to .env: AGENT_ID=0
+[identity] Saved to agent-id.json
 
-Risk params set: maxPosition=$500, maxDrawdown=5%, maxTrades/hr=10
+Agent registered!
+agentId (ERC-721 token ID): 0
 
 Add to .env:
   AGENT_ID=0
+
+Setting default risk params on RiskRouter...
+Risk params set: maxPosition=$500, maxDrawdown=5%, maxTrades/hr=10
 ```
 
 Add `AGENT_ID=0` (or whatever token ID you received) to your `.env`.

@@ -68,10 +68,10 @@ Output for a BUY:
 Output for a HOLD:
 
 ```
-[2024-01-15T10:30:00.000Z] HOLD XBTUSD @ $95,420.50
+[2026-03-27T11:02:50.000Z] HOLD XBTUSD @ $66,422.60
   Confidence: 50%
-  Reason: No clear momentum (0.12% change). Holding current position.
-  Market: bid=95418, ask=95423, spread=0.0052%, vol=1204.50
+  Reason: No clear momentum (0.09% change). Holding current position.
+  Market: bid=66421, ask=66421.1, spread=0.0002%, vol=2764.35
 ```
 
 ---
