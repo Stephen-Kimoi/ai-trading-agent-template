@@ -31,7 +31,7 @@ Your Strategy (TradingStrategy interface)
 - Node.js 20+
 - Sepolia ETH ([sepoliafaucet.com](https://sepoliafaucet.com))
 - Infura or Alchemy Sepolia RPC URL
-- Kraken account with API keys
+- Kraken Pro account with API keys (see below)
 
 ---
 
@@ -45,6 +45,13 @@ cp .env.example .env
 # Fill in SEPOLIA_RPC_URL, PRIVATE_KEY, KRAKEN_API_KEY, KRAKEN_API_SECRET
 ```
 
+### Kraken API key
+
+Use **Kraken Pro** (kraken.com → Go to Kraken Pro). Go to **Settings → API** and create a key with these permissions only:
+
+- **Funds:** Query
+- **Orders and trades:** Query open orders & trades, Create & modify orders, Cancel & close orders
+
 ---
 
 ## Quickstart
@@ -53,21 +60,35 @@ cp .env.example .env
 
 ```bash
 npx hardhat run scripts/deploy.ts --network sepolia
-# Copy the 3 addresses printed to your .env
+```
+
+Copy all 5 addresses printed to your `.env`:
+
+```env
+AGENT_REGISTRY_ADDRESS=...
+HACKATHON_VAULT_ADDRESS=...
+RISK_ROUTER_ADDRESS=...
+REPUTATION_REGISTRY_ADDRESS=...
+VALIDATION_REGISTRY_ADDRESS=...
 ```
 
 ### 2. Register your agent
 
 ```bash
-npx ts-node scripts/register-agent.ts
-# Copy AGENT_ID to your .env
+npm run register
+```
+
+Copy the printed `AGENT_ID` to your `.env`:
+
+```env
+AGENT_ID=0
 ```
 
 ### 3. Run the agent (sandbox mode)
 
 ```bash
 # Make sure KRAKEN_SANDBOX=true in .env
-npx ts-node scripts/run-agent.ts
+npm run run-agent
 ```
 
 You'll see live market data, trade decisions, human-readable explanations, and signed checkpoints printed to the console. Every checkpoint is appended to `checkpoints.jsonl`.

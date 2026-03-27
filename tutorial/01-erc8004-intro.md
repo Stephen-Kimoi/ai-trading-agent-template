@@ -2,7 +2,7 @@
 
 ## The problem: your AI agent is a ghost
 
-You build a trading bot. It runs, it trades, it makes decisions. But from the blockchain's perspective, it doesn't exist. There's just a wallet address — no identity, no record of what the agent is, who operates it, or what it's supposed to do.
+You build a trading bot. It runs, it trades, it makes decisions. But from the blockchain's perspective, it doesn't exist. There's just a wallet address, no identity, no record of what the agent is, who operates it, or what it's supposed to do.
 
 This creates real problems:
 - **No accountability**: anyone can claim any wallet address is their "AI agent"

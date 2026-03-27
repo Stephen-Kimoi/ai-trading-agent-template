@@ -37,12 +37,21 @@ KRAKEN_CLI_PATH=kraken       # only needed if binary isn't on PATH
 
 ## Getting Kraken API keys
 
-1. Log into [kraken.com](https://kraken.com) → **Security → API**
-2. Create a key with:
-   - **Query Funds** — read balance
-   - **Create & Modify Orders** — for live trading
-   - **Query Open Orders & Trades** — read positions
-3. Copy key + secret into `.env`
+1. Log into [kraken.com](https://kraken.com) → choose **Kraken Pro** (Advanced trading)
+2. Go to **Settings → API** and create a new key
+3. Tick exactly these permissions:
+
+**Funds permissions**
+- ✅ Query — required for `getBalance()`
+
+**Orders and trades**
+- ✅ Query open orders & trades — required for `getOpenOrders()`
+- ✅ Create & modify orders — required for `placeOrder()`
+- ✅ Cancel & close orders — required if the agent needs to cancel orders
+
+Leave everything else unchecked (no Deposit, Withdraw, Earn, Data, or WebSocket).
+
+4. Copy the key + secret into `.env`
 
 ---
 
