@@ -22,3 +22,5 @@ coverage.json
 
 # AI/Specstory
 .specstory/
+checkpoints.jsonl
+src/typechain/
