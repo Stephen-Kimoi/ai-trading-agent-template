@@ -62,15 +62,14 @@ export class KrakenClient {
    * All output is JSON by default when --json flag is passed.
    */
   private async run(subcommand: string[], isPrivate = false): Promise<unknown> {
-    const args: string[] = ["--json"];
+    const args: string[] = [];
 
-    if (this.sandbox) args.push("--sandbox");
-
-    if (isPrivate) {
+    if (isPrivate && !this.sandbox) {
       args.push("--api-key", this.apiKey, "--api-secret", this.apiSecret);
     }
 
     args.push(...subcommand);
+    args.push("-o", "json");
 
     try {
       const { stdout } = await execFileAsync(KRAKEN_BIN, args, { timeout: 15000 });
@@ -98,22 +97,23 @@ export class KrakenClient {
    *   kraken --json ticker --pair XBTUSD
    */
   async getTicker(pair: string): Promise<MarketData> {
-    const result = await this.run(["ticker", "--pair", pair]) as KrakenTickerResponse;
+    const result = await this.run(["ticker", pair]) as KrakenTickerResponse;
 
-    // The CLI returns a normalized ticker object — field names may vary slightly
-    // by CLI version. Adjust the field mapping if your CLI version differs.
-    const t = result.result?.[pair] ?? result.result?.[Object.keys(result.result ?? {})[0]];
+    // CLI returns data directly (no result wrapper): { "XXBTZUSD": { a, b, c, ... } }
+    type TickerEntry = { a?: string[]; b?: string[]; c?: string[]; v?: string[]; p?: string[]; h?: string[]; l?: string[]; last?: string; price?: string; bid?: string; ask?: string; volume?: string; vwap?: string; high?: string; low?: string; };
+    const data = (result.result ?? result) as Record<string, TickerEntry>;
+    const t = data[pair] ?? data[Object.keys(data)[0]];
     if (!t) throw new Error(`[kraken] No ticker data for pair: ${pair}`);
 
     return {
       pair,
-      price: parseFloat(t.c?.[0] ?? t.last ?? t.price),
-      bid:   parseFloat(t.b?.[0] ?? t.bid),
-      ask:   parseFloat(t.a?.[0] ?? t.ask),
-      volume: parseFloat(t.v?.[1] ?? t.volume),
-      vwap:   parseFloat(t.p?.[1] ?? t.vwap),
-      high:   parseFloat(t.h?.[1] ?? t.high),
-      low:    parseFloat(t.l?.[1] ?? t.low),
+      price: parseFloat(t.c?.[0] ?? t.last ?? t.price ?? "0"),
+      bid:   parseFloat(t.b?.[0] ?? t.bid ?? "0"),
+      ask:   parseFloat(t.a?.[0] ?? t.ask ?? "0"),
+      volume: parseFloat(t.v?.[1] ?? t.volume ?? "0"),
+      vwap:   parseFloat(t.p?.[1] ?? t.vwap ?? "0"),
+      high:   parseFloat(t.h?.[1] ?? t.high ?? "0"),
+      low:    parseFloat(t.l?.[1] ?? t.low ?? "0"),
       timestamp: Date.now(),
     };
   }
@@ -131,16 +131,17 @@ export class KrakenClient {
    * In sandbox mode the CLI uses paper trading — no real funds are affected.
    */
   async placeOrder(order: KrakenOrder): Promise<KrakenOrderResult> {
-    const args = [
-      "order", "add",
-      "--pair",      order.pair,
-      "--type",      order.type,
-      "--ordertype", order.ordertype,
-      "--volume",    order.volume,
-    ];
-    if (order.price) args.push("--price", order.price);
+    let args: string[];
+    if (this.sandbox) {
+      // Paper trading: kraken paper buy <PAIR> <VOL> [--type limit --price P]
+      args = ["paper", order.type, order.pair, order.volume];
+      if (order.ordertype === "limit" && order.price) args.push("--type", "limit", "--price", order.price);
+    } else {
+      args = ["order", "buy" === order.type ? "buy" : "sell", order.pair, order.volume, "--type", order.ordertype];
+      if (order.price) args.push("--price", order.price);
+    }
 
-    const result = await this.run(args, true) as KrakenOrderResponse;
+    const result = await this.run(args, !this.sandbox) as KrakenOrderResponse;
 
     if (result.error?.length) {
       throw new Error(`[kraken] Order error: ${result.error.join(", ")}`);
@@ -219,21 +220,22 @@ export class KrakenMCPClient {
   async getTicker(pair: string): Promise<MarketData> {
     const result = await this.callTool("kraken_ticker", { pair }) as KrakenTickerResponse;
     const t = result.result?.[pair] ?? result.result?.[Object.keys(result.result ?? {})[0]];
+    if (!t) throw new Error(`[kraken-mcp] No ticker data for pair: ${pair}`);
     return {
       pair,
-      price: parseFloat(t.c?.[0] ?? t.last),
-      bid: parseFloat(t.b?.[0] ?? t.bid),
-      ask: parseFloat(t.a?.[0] ?? t.ask),
-      volume: parseFloat(t.v?.[1] ?? t.volume),
-      vwap: parseFloat(t.p?.[1] ?? t.vwap),
-      high: parseFloat(t.h?.[1] ?? t.high),
-      low: parseFloat(t.l?.[1] ?? t.low),
+      price: parseFloat(t.c?.[0] ?? t.last ?? "0"),
+      bid: parseFloat(t.b?.[0] ?? t.bid ?? "0"),
+      ask: parseFloat(t.a?.[0] ?? t.ask ?? "0"),
+      volume: parseFloat(t.v?.[1] ?? t.volume ?? "0"),
+      vwap: parseFloat(t.p?.[1] ?? t.vwap ?? "0"),
+      high: parseFloat((t.h?.[1] ?? (t as Record<string, unknown>).high ?? "0") as string),
+      low: parseFloat((t.l?.[1] ?? (t as Record<string, unknown>).low ?? "0") as string),
       timestamp: Date.now(),
     };
   }
 
   async placeOrder(order: KrakenOrder): Promise<KrakenOrderResult> {
-    const result = await this.callTool("kraken_order", order) as KrakenOrderResponse;
+    const result = await this.callTool("kraken_order", { ...order }) as KrakenOrderResponse;
     return {
       txid: result.result?.txid ?? [`MCP-${Date.now()}`],
       descr: result.result?.descr ?? { order: `${order.type} ${order.volume} ${order.pair}` },
@@ -250,7 +252,7 @@ interface KrakenTickerResponse {
   result?: Record<string, {
     a?: string[]; b?: string[]; c?: string[]; v?: string[];
     p?: string[]; h?: string[]; l?: string[];
-    last?: string; price?: string; bid?: string; ask?: string; volume?: string; vwap?: string;
+    last?: string; price?: string; bid?: string; ask?: string; volume?: string; vwap?: string; high?: string; low?: string;
   }>;
 }
 
