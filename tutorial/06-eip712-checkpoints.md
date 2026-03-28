@@ -2,7 +2,7 @@
 
 ## What problem this solves
 
-Your agent writes "I bought BTC because the momentum was strong" to a log file. But a log file is just text — anyone could edit it. How do you prove that:
+Your agent writes "I bought BTC because the momentum was strong" to a log file. But a log file is just text, anyone could edit it. How do you prove that:
 1. A specific agent made a specific decision
 2. At a specific time
 3. With a specific piece of reasoning
@@ -52,9 +52,9 @@ const types = {
 ```
 
 Why `reasoningHash` instead of the full reasoning string?
-- Strings can be arbitrarily long — hashing keeps the signed payload compact
-- The hash is a commitment: if you have the hash and the original string, you can verify they match
-- The full reasoning string is stored alongside the checkpoint in `checkpoints.jsonl`
+- Strings can be arbitrarily long: hashing keeps the signed payload compact ([`checkpoint.ts` L69](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/explainability/checkpoint.ts#L69))
+- The hash is a commitment: if you have the hash and the original string, you can verify they match ([`verifyReasoningIntegrity()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/explainability/checkpoint.ts#L145))
+- The full reasoning string is stored alongside the checkpoint in `checkpoints.jsonl` ([`index.ts` L193](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L193))
 
 ---
 
@@ -79,7 +79,7 @@ const checkpoint = await generateCheckpoint(
 // checkpoint.reasoningHash = keccak256(decision.reasoning)
 ```
 
-Internally this calls `wallet.signTypedData(domain, types, value)` — ethers.js v6's EIP-712 signing method.
+Internally this calls `wallet.signTypedData(domain, types, value)`: ethers.js v6's EIP-712 signing method.
 
 ---
 
@@ -143,7 +143,7 @@ The signed checkpoint format is a foundation. With it you can:
 
 ## Template note
 
-> **Why this matters:** Checkpoint generation is automatic — the agent loop calls `generateCheckpoint()` after every decision, including HOLDs. Every action your agent takes is cryptographically signed and tied to its registered `agentId`. This is the foundation for building on-chain reputation: a verifiable, tamper-proof history of decisions that anyone can audit.
+> **Why this matters:** Checkpoint generation is automatic, the agent loop calls `generateCheckpoint()` after every decision, including HOLDs. Every action your agent takes is cryptographically signed and tied to its registered `agentId`. This is the foundation for building on-chain reputation: a verifiable, tamper-proof history of decisions that anyone can audit.
 
 ---
 

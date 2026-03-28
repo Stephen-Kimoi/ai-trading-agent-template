@@ -3,8 +3,8 @@
 ## Why explainability matters for trading agents
 
 When an agent makes a trade, two questions need answers:
-1. **For humans**: *Why did it do that?* — in plain language, auditable after the fact
-2. **For machines**: *Can we verify it said what it claims to say?* — cryptographically
+1. **For humans**: *Why did it do that?*: in plain language, auditable after the fact
+2. **For machines**: *Can we verify it said what it claims to say?*: cryptographically
 
 This tutorial covers the first question. Part 6 covers the second.
 
@@ -12,7 +12,7 @@ This tutorial covers the first question. Part 6 covers the second.
 
 ## The `reasoning` field in every decision
 
-Every `TradeDecision` returned by your strategy must include a `reasoning` string:
+Every `TradeDecision` returned by your strategy must include a `reasoning` string ([`src/types/index.ts` L30–L37](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/types/index.ts#L30-L37)):
 
 ```typescript
 interface TradeDecision {
@@ -37,10 +37,17 @@ $94,200 may reverse the move."
 "The market looks bad."
 ```
 
-The reasoning field is:
-- Logged to the console (human monitoring)
-- Hashed into the EIP-712 checkpoint (cryptographic integrity)
-- Stored in `checkpoints.jsonl` alongside the signature
+The reasoning field flows through three places automatically, once per tick (every 30 seconds by default):
+
+| Where | What you see | Code reference |
+|-------|-------------|----------------|
+| **Terminal** | Printed immediately after each decision via `formatExplanation()` | [`src/agent/index.ts` L119](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L119) |
+| **Terminal (checkpoint block)** | Printed again inside the signed checkpoint summary via `formatCheckpointLog()` | [`src/agent/index.ts` L174](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L174) |
+| **EIP-712 signature** | `keccak256(reasoning)` is computed and included in the signed payload | [`src/explainability/checkpoint.ts` L69](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/explainability/checkpoint.ts#L69) |
+| **`checkpoints.jsonl`** | Full reasoning string appended as JSON after every tick | [`src/agent/index.ts` L193](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L193) |
+| **Dashboard** | Shown on each checkpoint card under the action badge | `http://localhost:3000` (poll every 5s) |
+
+You'll see the first output in the terminal **within 30 seconds** of starting `npm run run-agent` (the agent warms up for 5 ticks collecting price samples, then starts making decisions). The default interval is set in [`src/agent/index.ts` L42](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L42) and can be overridden with `POLL_INTERVAL_MS` in `.env`.
 
 ---
 
@@ -76,24 +83,31 @@ Output for a HOLD:
 
 ---
 
-## How your LLM generates reasoning
+## Swapping in an LLM (optional)
 
-If you're using an LLM strategy, the reasoning field comes directly from the model. Here's how to prompt for it (example system prompt for Claude):
+The demo runs `MomentumStrategy` — no LLM involved. Reasoning is generated directly from price arithmetic ([`src/agent/strategy.ts` L61–L72](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/strategy.ts#L61-L72)). That's intentional: the template works out of the box without any API keys beyond Kraken.
 
+When you're ready to replace the strategy with a model, the codebase includes a ready-to-wire `LLMStrategy` stub at [`src/agent/strategy.ts` L90–L135](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/strategy.ts#L90-L135):
+
+```typescript
+// const response = await this.client.messages.create({
+//   model: "claude-sonnet-4-6",
+//   max_tokens: 500,
+//   messages: [{
+//     role: "user",
+//     content: `You are a crypto trading agent. Here is the current market data:
+//       Pair: ${data.pair}
+//       Price: $${data.price}
+//       24h High: $${data.high}, Low: $${data.low}
+//       Volume: ${data.volume}
+//       VWAP: $${data.vwap}
+//
+//       Respond with JSON: { action: "BUY"|"SELL"|"HOLD", amount: number, confidence: 0-1, reasoning: string }`
+//   }]
+// });
 ```
-You are an autonomous crypto trading agent. For every analysis, you must return:
-- action: BUY, SELL, or HOLD
-- amount: trade size in USD (0 if HOLD)
-- confidence: 0.0 to 1.0
-- reasoning: a specific, technical explanation of your decision that references
-  the actual numbers from the market data provided. Do not use vague language.
-  Your reasoning must be auditable — someone should be able to read it and
-  understand exactly why you made this trade.
 
-Respond ONLY with valid JSON.
-```
-
-The key constraint: **reasoning must reference actual market data values**. This makes the explanation auditable — you can check the historical market data and verify the claim.
+Uncomment and fill in your client — the `reasoning` field in the JSON response maps directly to `TradeDecision.reasoning`. The key constraint: **reasoning must reference actual market data values** (price, volume, VWAP). This makes the explanation auditable — anyone can cross-check the claim against the historical market data.
 
 ---
 
@@ -117,6 +131,47 @@ CHECKPOINT — BUY XBTUSD
 
 ---
 
+## Reading a full tick in the terminal
+
+Here's what one complete tick looks like, annotated:
+
+```
+[agent] XBTUSD @ $66,391.2                          ← live price fetch from Kraken
+
+[2026-03-28T12:27:05.553Z] HOLD XBTUSD @ $66,391.20 ← formatExplanation() output
+  Confidence: 50%                                    ← decision.confidence
+  Reason: No clear momentum (-0.00% change).         ← decision.reasoning (from your strategy)
+          Holding current position.
+  Market: bid=66391.2, ask=66391.3,                 ← raw market data at decision time
+          spread=0.0002%, vol=2287.42
+
+────────────────────────────────────────────────────────────────────────
+CHECKPOINT — HOLD XBTUSD                            ← formatCheckpointLog() output
+  Agent:     1                                       ← agentId (ERC-721 token ID)
+  Timestamp: 2026-03-28T12:27:05.000Z
+  Amount:    $0                                      ← $0 for HOLD, non-zero for BUY/SELL
+  Price:     $66391.2
+  Confidence: 50%
+  Reasoning: No clear momentum (-0.00% change).      ← same reasoning, now inside the signed payload
+             Holding current position.
+  Sig:       0x009aa74a5314926499...0d7940931c       ← EIP-712 signature over all of the above
+  Signer:    0x13Ef924EB7408e90278B86b659960AFb00DDae61  ← agentWallet address
+────────────────────────────────────────────────────────────────────────
+
+[agent] Checkpoint posted to ValidationRegistry: 0xca62bb0d47f2b53a1a...  ← on-chain tx hash
+```
+
+The sequence within each tick is:
+1. [`kraken.getTicker()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L112) — fetch live price from Kraken
+2. [`strategy.analyze(market)`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L116) — strategy returns a `TradeDecision` (including `reasoning`)
+3. [`formatExplanation()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L119) — prints the human-readable summary
+4. [`generateCheckpoint()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L164) — signs the decision with EIP-712; reasoning is hashed into the signature
+5. [`formatCheckpointLog()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L174) — prints the signed checkpoint block
+6. [ValidationRegistry post](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L186) — checkpoint hash submitted on-chain to Sepolia
+7. [`fs.appendFileSync()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L193) — checkpoint appended to `checkpoints.jsonl`
+
+---
+
 ## The checkpoints.jsonl file
 
 Every checkpoint is appended to `checkpoints.jsonl` at the project root. Each line is a JSON object:
@@ -127,14 +182,14 @@ Every checkpoint is appended to `checkpoints.jsonl` at the project root. Each li
 
 This file is your audit log. After a trading session you can:
 - Review every decision and the reasoning behind it
-- Verify any signature with `verifyCheckpoint()`
-- Check that reasoning strings weren't tampered with using `verifyReasoningIntegrity()`
+- Verify any signature with [`verifyCheckpoint()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/explainability/checkpoint.ts#L116)
+- Check that reasoning strings weren't tampered with using [`verifyReasoningIntegrity()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/explainability/checkpoint.ts#L145)
 
 ---
 
 ## Template note
 
-> **Why this matters:** The explanation layer is already wired into the agent loop — you don't need to call it manually. Your strategy's `reasoning` field is the only input required. The stronger and more specific your reasoning strings, the more useful your agent's audit trail becomes — for debugging, for trust, and for building reputation over time.
+> **Why this matters:** The explanation layer is already wired into the agent loop, you don't need to call it manually. Your strategy's `reasoning` field is the only input required. The stronger and more specific your reasoning strings, the more useful your agent's audit trail becomes — for debugging, for trust, and for building reputation over time.
 
 ---
 

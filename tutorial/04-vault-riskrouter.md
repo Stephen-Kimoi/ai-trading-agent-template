@@ -105,7 +105,19 @@ TradeApproved(agentId, intentHash, amountUsdScaled)
 
 ## Setting your risk params
 
-After deployment, configure risk params for your agent (owner-only, called by the vault/router deployer):
+You don't need to do this manually: `npm run register` already sets default risk params as part of registration ([`scripts/register-agent.ts` L76–L83](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/scripts/register-agent.ts#L76-L83)):
+
+```typescript
+// Called automatically during npm run register
+await router.setRiskParams(
+  agentId,
+  BigInt(50000),  // maxPositionUsdScaled: $500 max per trade (500 * 100)
+  BigInt(500),    // maxDrawdownBps: 5%
+  BigInt(10)      // maxTradesPerHour: 10
+);
+```
+
+To change them later, use [`src/onchain/riskRouter.ts` L183–L196](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/onchain/riskRouter.ts#L183-L196):
 
 ```typescript
 await riskRouter.setRiskParams(
@@ -116,45 +128,11 @@ await riskRouter.setRiskParams(
 );
 ```
 
-Or the register script does this automatically. You can also call it directly:
-
-```bash
-cast send $RISK_ROUTER_ADDRESS \
-  "setRiskParams(uint256,uint256,uint256,uint256)" \
-  $AGENT_ID 50000 500 10 \
-  --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY
-```
-
----
-
-## Connecting to an external vault + router
-
-If you want to connect your agent to contracts deployed by someone else (a shared registry, a protocol, or a production deployment):
-
-1. Set `HACKATHON_VAULT_ADDRESS` and `RISK_ROUTER_ADDRESS` in `.env` to those addresses
-2. The `RiskRouterClient` and `VaultClient` will connect to those contracts automatically
-3. Re-sign your `TradeIntent` against that router's EIP-712 domain (the `verifyingContract` field will differ)
-
-The interface is identical — the same TypeScript code works with any deployment of these contracts.
-
----
-
-## The Vault
-
-Capital is allocated per-agent. Before sizing a trade, the agent verifies it has sufficient capital:
-
-```typescript
-const vault = new VaultClient(vaultAddress, provider);
-const hasCapital = await vault.hasSufficientCapital(agentId, 100, ethPrice);
-```
-
-The vault tracks `allocatedCapital[agentId]` on-chain. Because the allocation is tied to the agent's ERC-721 `agentId`, it's tamper-proof — the agent can only trade up to what's been allocated to its registered identity.
-
 ---
 
 ## Template note
 
-> **Why this matters:** The TradeIntent pattern gives every trade a cryptographic proof of intent that was validated on-chain before execution. This is what makes agent behavior auditable and trustworthy — anyone can verify that a specific trade was approved by a specific registered agent against a defined risk policy, without having to trust the agent's own logs.
+> **Why this matters:** The TradeIntent pattern gives every trade a cryptographic proof of intent that was validated on-chain before execution. This is what makes agent behavior auditable and trustworthy: anyone can verify that a specific trade was approved by a specific registered agent against a defined risk policy, without having to trust the agent's own logs.
 
 ---
 

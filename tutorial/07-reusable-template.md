@@ -52,7 +52,7 @@ export class MyStrategy implements TradingStrategy {
 }
 ```
 
-Then in `src/agent/index.ts`, swap the strategy import:
+Then in [`src/agent/index.ts` L28 & L211](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L28), swap the strategy import:
 
 ```typescript
 // Before:
@@ -69,6 +69,8 @@ That's it. Everything else — identity, vault, risk checks, Kraken execution, c
 ---
 
 ### Option B: Claude API strategy
+
+Full stub in [`src/agent/strategy.ts` L90](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/strategy.ts#L90) — uncomment and fill in your client:
 
 ```typescript
 import Anthropic from "@anthropic-ai/sdk";
@@ -106,6 +108,8 @@ Add to `.env`: `ANTHROPIC_API_KEY=your_key`
 
 ### Option C: Groq / Llama strategy
 
+See also [`src/agent/strategy.ts` L27](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/strategy.ts#L27) for the `MomentumStrategy` reference implementation:
+
 ```typescript
 import Groq from "groq-sdk";
 import { MarketData, TradeDecision, TradingStrategy } from "../types/index";
@@ -141,15 +145,15 @@ export class GroqStrategy implements TradingStrategy {
 
 | Layer | Customizable? | How |
 |-------|--------------|-----|
-| Trading strategy / model | ✅ Yes | Implement `TradingStrategy` |
-| Trading pair | ✅ Yes | `TRADING_PAIR` in `.env` |
-| Poll interval | ✅ Yes | `POLL_INTERVAL_MS` in `.env` |
-| Risk parameters | ✅ Yes | `setRiskParams()` call |
-| Agent metadata | ✅ Yes | Edit name/description/capabilities in `register-agent.ts` |
-| ERC-8004 identity scheme | ❌ Fixed | Same for all teams |
+| Trading strategy / model | ✅ Yes | Implement [`TradingStrategy`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/strategy.ts#L27) |
+| Trading pair | ✅ Yes | [`TRADING_PAIR`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L41) in `.env` |
+| Poll interval | ✅ Yes | [`POLL_INTERVAL_MS`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/agent/index.ts#L42) in `.env` |
+| Risk parameters | ✅ Yes | [`setRiskParams()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/onchain/riskRouter.ts#L183) call |
+| Agent metadata | ✅ Yes | Edit name/description/capabilities in [`register-agent.ts`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/scripts/register-agent.ts#L48) |
+| ERC-8004 identity scheme | ❌ Fixed | Same for all agents |
 | Vault + RiskRouter contracts | ❌ Fixed | Same contracts, per-agent config |
-| Kraken API client | ❌ Fixed | All teams use same exchange |
-| EIP-712 checkpoint format | ❌ Fixed | Shared audit standard |
+| Kraken API client | ❌ Fixed | [`src/exchange/kraken.ts`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/exchange/kraken.ts) |
+| EIP-712 checkpoint format | ❌ Fixed | [`src/explainability/checkpoint.ts`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/explainability/checkpoint.ts#L28) |
 
 ---
 
@@ -177,7 +181,7 @@ export class GroqStrategy implements TradingStrategy {
 When you're ready to trade for real:
 1. Set `KRAKEN_SANDBOX=false` in `.env`
 2. Ensure your vault has allocated capital for your agent
-3. Set sensible risk params via `setRiskParams()`
+3. Set sensible risk params via [`setRiskParams()`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/src/onchain/riskRouter.ts#L183)
 4. Monitor the dashboard (`npm run dashboard`) for live decisions and signed checkpoints
 5. All checkpoints are also written to `checkpoints.jsonl` for offline audit
 
@@ -185,7 +189,7 @@ When you're ready to trade for real:
 
 ## Dashboard
 
-The project ships with a live web dashboard that reads from `checkpoints.jsonl` and auto-refreshes every 5 seconds:
+The project ships with a live web dashboard ([`scripts/dashboard.ts`](https://github.com/Stephen-Kimoi/ai-trading-agent-template/blob/main/scripts/dashboard.ts)) that reads from `checkpoints.jsonl` and auto-refreshes every 5 seconds:
 
 ```bash
 npm run dashboard   # → http://localhost:3000
