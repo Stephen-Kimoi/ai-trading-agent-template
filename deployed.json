@@ -1,11 +1,11 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "deployedAt": "2026-03-27T09:50:02.140Z",
-  "deployer": "0x13Ef924EB7408e90278B86b659960AFb00DDae61",
-  "AgentRegistry": "0x483066372b6DBbeef80702FAf0D6b28677fBe178",
-  "HackathonVault": "0xEf7BF90aFD82cA2fc0d09aCbDD41B22038B04f1F",
-  "RiskRouter": "0x8E575a59C6A7bA3FB714e726E4a24e4BA10B1EDa",
-  "ReputationRegistry": "0x4223c83DeC37c0e74BA9c227fe8F643c50008028",
-  "ValidationRegistry": "0x7C9f58a1f5Ed4D654A7E63a0142Bb6912DCBb121"
+  "deployedAt": "2026-03-31T11:07:34.648Z",
+  "deployer": "0xED4c3a2508AdE21cD431f7eb8F3D2E7C42F1B307",
+  "AgentRegistry": "0xf91d541378F2b301d7137837b9D8A942E177606c",
+  "HackathonVault": "0x44A98eB741ca924Bc0b29e3a63BfA389EbFDC673",
+  "RiskRouter": "0xdd9a28932dD65E8FdbE5241f112f7dfBfD578aC6",
+  "ReputationRegistry": "0x8C185007AAf8a3996180E455e13753FfF6E14e56",
+  "ValidationRegistry": "0xf94468ffa3c364f0CA4E5c0F66F5c3108ec54414"
 }
