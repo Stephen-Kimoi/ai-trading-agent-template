@@ -1,20 +1,4 @@
-/**
- * Main agent loop — full ERC-8004 + Kraken CLI flow
- *
- * Each tick:
- *   1. Fetch market data via Kraken CLI
- *   2. Strategy.analyze(market) → TradeDecision
- *   3. Format human-readable explanation
- *   4. If BUY/SELL:
- *      a. Build + sign TradeIntent (EIP-712, agentWallet)
- *      b. Submit TradeIntent to RiskRouter — get approval/rejection on-chain
- *      c. If approved: execute via Kraken CLI
- *   5. Generate EIP-712 signed checkpoint (includes intentHash)
- *   6. Post checkpoint hash to ValidationRegistry
- *   7. Append checkpoint to checkpoints.jsonl
- *
- * Swap strategy: change the strategy instantiation at the bottom of this file.
- */
+
 
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -25,8 +9,8 @@ import * as path from "path";
 
 import { TradingStrategy } from "../types/index";
 import { getAgentId, getAgentRegistration } from "./identity";
-import { MomentumStrategy } from "./strategy";
-import { KrakenClient } from "../exchange/kraken";
+import { VolumeConfirmedMomentumStrategy, LLMStrategy } from "./strategy";
+import {getMarketSnapshot} from "../data/marketdata";
 import { VaultClient } from "../onchain/vault";
 import { RiskRouterClient } from "../onchain/riskRouter";
 import { ValidationRegistryClient } from "../onchain/validationRegistry";
@@ -38,7 +22,7 @@ import { generateCheckpoint } from "../explainability/checkpoint";
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SEPOLIA_CHAIN_ID = 11155111;
-const TRADING_PAIR    = process.env.TRADING_PAIR || "XBTUSD";
+const TRADING_PAIR    = process.env.TRADING_PAIR || "BTCUSD";
 const POLL_INTERVAL   = parseInt(process.env.POLL_INTERVAL_MS || "30000");
 const CHECKPOINTS_FILE = path.join(process.cwd(), "checkpoints.jsonl");
 const HOLD_INTENT_HASH = ethers.ZeroHash; // used for HOLD decisions (no intent submitted)
@@ -91,7 +75,7 @@ export async function runAgent(strategy: TradingStrategy) {
   console.log(`[agent] agentWallet: ${reg.agentWallet}`);
 
   // Init clients
-  const kraken     = new KrakenClient();
+  
   const vault      = new VaultClient(vaultAddress, provider);
   const riskRouter = new RiskRouterClient(routerAddress, agentWallet, SEPOLIA_CHAIN_ID);
   const validation = new ValidationRegistryClient(validationAddress, agentWallet);
@@ -105,11 +89,10 @@ export async function runAgent(strategy: TradingStrategy) {
   // ─────────────────────────────────────────────────────────────────────────
   // Main tick
   // ─────────────────────────────────────────────────────────────────────────
-
   const tick = async () => {
     try {
-      // 1. Fetch market data via Kraken CLI
-      const market = await kraken.getTicker(TRADING_PAIR);
+      // 1. Fetch market data via CoinGecko API
+      const market = await getMarketSnapshot(TRADING_PAIR);
       console.log(`[agent] ${TRADING_PAIR} @ $${market.price.toLocaleString()}`);
 
       // 2. Strategy decision
@@ -119,7 +102,8 @@ export async function runAgent(strategy: TradingStrategy) {
       const explanation = formatExplanation(decision, market);
       console.log(explanation);
 
-      let intentHash = HOLD_INTENT_HASH;
+      let intentHash = HOLD_INTENT_HASH; 
+    
 
       // 4. Actionable trade: submit signed TradeIntent to RiskRouter
       if (decision.action !== "HOLD" && decision.amount > 0) {
@@ -149,14 +133,9 @@ export async function runAgent(strategy: TradingStrategy) {
         } else {
           // 4c. Execute via Kraken CLI
           const volumeBase = (decision.amount / market.price).toFixed(8);
-          const result = await kraken.placeOrder({
-            pair:      decision.pair,
-            type:      decision.action === "BUY" ? "buy" : "sell",
-            ordertype: "market",
-            volume:    volumeBase,
-          });
-          console.log(`[agent] Order placed: ${result.txid.join(", ")}`);
-          console.log(`[agent] ${result.descr.order}`);
+
+          console.log(`[agent] PAPER TRADE EXECUTED`);
+          console.log(`[agent] ${decision.action} ${volumeBase} ${decision.pair} @ $${market.price}`);
         }
       }
 
@@ -202,13 +181,14 @@ export async function runAgent(strategy: TradingStrategy) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Entry point — swap strategy here
+// Entry point — your strategy goes here
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── SWAP YOUR STRATEGY HERE ─────────────────────────────────────────────────
-// import { LLMStrategy } from "./strategy.js";
-// const strategy = new LLMStrategy();
-const strategy = new MomentumStrategy(5, 100);
+
+
+// ── PICK ONE ────────────────────────────────────────────────────────────────
+const strategy = new VolumeConfirmedMomentumStrategy();      // ← your rule-based strategy (recommended for first test)
+// const strategy = new LLMStrategy();                      // ← Groq AI version
 // ────────────────────────────────────────────────────────────────────────────
 
 runAgent(strategy).catch((err) => {
