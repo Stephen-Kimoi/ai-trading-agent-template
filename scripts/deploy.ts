@@ -32,10 +32,11 @@ async function main() {
   const registryAddress = await registry.getAddress();
   console.log(`   AgentRegistry: ${registryAddress}`);
 
-  // 2. HackathonVault
+  // 2. HackathonVault (0.05 ETH fixed allocation per team)
+  const allocationPerTeam = ethers.parseEther("0.05");
   console.log("2/5 Deploying HackathonVault...");
   const HackathonVault = await ethers.getContractFactory("HackathonVault");
-  const vault = await HackathonVault.deploy();
+  const vault = await HackathonVault.deploy(registryAddress, allocationPerTeam);
   await vault.waitForDeployment();
   const vaultAddress = await vault.getAddress();
   console.log(`   HackathonVault: ${vaultAddress}`);
@@ -91,7 +92,7 @@ async function main() {
 
   console.log("Verify on Etherscan:");
   console.log(`  npx hardhat verify --network sepolia ${registryAddress}`);
-  console.log(`  npx hardhat verify --network sepolia ${vaultAddress}`);
+  console.log(`  npx hardhat verify --network sepolia ${vaultAddress} "${registryAddress}" "50000000000000000"`);
   console.log(`  npx hardhat verify --network sepolia ${routerAddress} "${registryAddress}"`);
   console.log(`  npx hardhat verify --network sepolia ${reputationAddress} "${registryAddress}"`);
   console.log(`  npx hardhat verify --network sepolia ${validationAddress} "${registryAddress}" true`);

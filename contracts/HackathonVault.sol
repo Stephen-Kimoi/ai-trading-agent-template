@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+interface IAgentRegistry {
+    function isRegistered(uint256 agentId) external view returns (bool);
+}
+
 /**
  * @title HackathonVault
  * @notice Capital vault that holds ETH and tracks per-agent allocations.
  *
- * The vault is the financial backbone of the trading agent system. It ensures
- * that every trade is backed by real allocated capital and that no agent can
- * spend more than its allocated share. This is the "trust" layer — anyone can
- * inspect how much capital each agentId controls.
- *
- * In production you'd extend this with ERC-20 support (e.g. USDC). For the
- * hackathon template, ETH on Sepolia is sufficient.
+ * Teams self-serve their allocation by calling claimAllocation(agentId) after
+ * registering on the AgentRegistry. Each agentId gets exactly allocationPerTeam
+ * wei — one claim per agent, enforced on-chain.
  */
 contract HackathonVault {
     // -------------------------------------------------------------------------
@@ -19,7 +19,11 @@ contract HackathonVault {
     // -------------------------------------------------------------------------
 
     address public owner;
-    mapping(bytes32 => uint256) public allocatedCapital; // agentId → wei
+    IAgentRegistry public agentRegistry;
+    uint256 public allocationPerTeam;
+
+    mapping(uint256 => uint256) public allocatedCapital; // agentId → wei
+    mapping(uint256 => bool) public hasClaimed;          // agentId → claimed
     uint256 public totalAllocated;
 
     // -------------------------------------------------------------------------
@@ -27,16 +31,19 @@ contract HackathonVault {
     // -------------------------------------------------------------------------
 
     event Deposited(address indexed from, uint256 amount);
-    event CapitalAllocated(bytes32 indexed agentId, uint256 amount);
-    event CapitalReleased(bytes32 indexed agentId, uint256 amount);
+    event CapitalAllocated(uint256 indexed agentId, uint256 amount);
+    event CapitalReleased(uint256 indexed agentId, uint256 amount);
     event Withdrawn(address indexed to, uint256 amount);
+    event AllocationPerTeamUpdated(uint256 oldAmount, uint256 newAmount);
 
     // -------------------------------------------------------------------------
     // Constructor
     // -------------------------------------------------------------------------
 
-    constructor() {
+    constructor(address _agentRegistry, uint256 _allocationPerTeam) {
         owner = msg.sender;
+        agentRegistry = IAgentRegistry(_agentRegistry);
+        allocationPerTeam = _allocationPerTeam;
     }
 
     modifier onlyOwner() {
@@ -48,9 +55,6 @@ contract HackathonVault {
     // Funding
     // -------------------------------------------------------------------------
 
-    /**
-     * @notice Deposit ETH into the vault.
-     */
     function deposit() external payable {
         require(msg.value > 0, "HackathonVault: zero deposit");
         emit Deposited(msg.sender, msg.value);
@@ -61,14 +65,37 @@ contract HackathonVault {
     }
 
     // -------------------------------------------------------------------------
-    // Capital management (owner-controlled for hackathon simplicity)
+    // Self-serve claim (called by teams after registering their agent)
     // -------------------------------------------------------------------------
 
     /**
-     * @notice Allocate capital to a specific agent.
-     * @dev In production this would be gated by agent registration checks.
+     * @notice Claim the fixed sandbox capital allocation for a registered agent.
+     * @dev Anyone can call this for any agentId — but only once per agent.
+     *      Reverts if the vault is underfunded or the agent is not registered.
      */
-    function allocate(bytes32 agentId, uint256 amount) external onlyOwner {
+    function claimAllocation(uint256 agentId) external {
+        require(agentRegistry.isRegistered(agentId), "HackathonVault: agent not registered");
+        require(!hasClaimed[agentId], "HackathonVault: already claimed");
+        require(
+            address(this).balance >= totalAllocated + allocationPerTeam,
+            "HackathonVault: vault underfunded"
+        );
+
+        hasClaimed[agentId] = true;
+        allocatedCapital[agentId] += allocationPerTeam;
+        totalAllocated += allocationPerTeam;
+
+        emit CapitalAllocated(agentId, allocationPerTeam);
+    }
+
+    // -------------------------------------------------------------------------
+    // Owner-controlled management
+    // -------------------------------------------------------------------------
+
+    /**
+     * @notice Manually allocate capital to an agent (owner override).
+     */
+    function allocate(uint256 agentId, uint256 amount) external onlyOwner {
         require(
             address(this).balance >= totalAllocated + amount,
             "HackathonVault: insufficient unallocated balance"
@@ -81,7 +108,7 @@ contract HackathonVault {
     /**
      * @notice Release capital from an agent back to the unallocated pool.
      */
-    function release(bytes32 agentId, uint256 amount) external onlyOwner {
+    function release(uint256 agentId, uint256 amount) external onlyOwner {
         require(allocatedCapital[agentId] >= amount, "HackathonVault: insufficient allocation");
         allocatedCapital[agentId] -= amount;
         totalAllocated -= amount;
@@ -89,7 +116,15 @@ contract HackathonVault {
     }
 
     /**
-     * @notice Withdraw unallocated ETH from the vault (owner only).
+     * @notice Update the fixed allocation amount per team.
+     */
+    function setAllocationPerTeam(uint256 newAmount) external onlyOwner {
+        emit AllocationPerTeamUpdated(allocationPerTeam, newAmount);
+        allocationPerTeam = newAmount;
+    }
+
+    /**
+     * @notice Withdraw unallocated ETH from the vault.
      */
     function withdraw(uint256 amount) external onlyOwner {
         uint256 unallocated = address(this).balance - totalAllocated;
@@ -103,7 +138,7 @@ contract HackathonVault {
     // Views
     // -------------------------------------------------------------------------
 
-    function getBalance(bytes32 agentId) external view returns (uint256) {
+    function getBalance(uint256 agentId) external view returns (uint256) {
         return allocatedCapital[agentId];
     }
 
