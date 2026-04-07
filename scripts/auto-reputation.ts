@@ -13,9 +13,9 @@
  * Run once:
  *   npx hardhat run scripts/auto-reputation.ts --network sepolia
  *
- * Cron every 4 h:
- *   0 */4 * * * cd /root/ai-trading-agent-tutorial && \
- *     npx hardhat run scripts/auto-reputation.ts --network sepolia \
+ * Cron every 4 h (add to crontab with: crontab -e):
+ *   0 0,4,8,12,16,20 * * * cd /root/ai-trading-agent-tutorial
+ *     && npx hardhat run scripts/auto-reputation.ts --network sepolia
  *     >> /var/log/auto-rep.log 2>&1
  */
 
