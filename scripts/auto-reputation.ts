@@ -28,12 +28,13 @@ const ROUTER_ADDR     = "0xd6A6952545FF6E6E6681c2d15C59f9EB8F40FdBC";
 const VALIDATION_ADDR = "0x92bF63E5C7Ac6980f237a7164Ab413BE226187F1";
 const REPUTATION_ADDR = "0x423a9904e39537a9997fbaF0f220d79D7d545763";
 
-// Judge wallet -- deterministic from seed, same address every run.
-// NOTE: Fund this address with at least 0.01 Sepolia ETH before first run.
-// Address: 0xC15FdA1D429C758C01a2084AacfACa90Ff15a2f1
-const JUDGE_WALLET_SEED = "lablab-hackathon-judge-wallet-v1";
+// Judge wallet -- rotates every 4h so the bot can re-score agents as they improve.
+// Each 4h slot gets a unique deterministic wallet derived from the slot index.
+// All wallets are pre-funded by scripts/prefund-judges.ts before the hackathon ends.
+const RUN_SLOT = Math.floor(Date.now() / (4 * 3600_000)); // increments every 4h
+const JUDGE_WALLET_SEED = `lablab-hackathon-judge-wallet-slot-${RUN_SLOT}`;
 
-const MIN_JUDGE_BALANCE = ethers.parseEther("0.005");
+const MIN_JUDGE_BALANCE = ethers.parseEther("0.003");
 
 // ABIs
 const REGISTRY_ABI = [

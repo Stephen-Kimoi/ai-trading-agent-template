@@ -6,6 +6,7 @@
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.ts --network sepolia",
     "register": "npx ts-node scripts/register-agent.ts",
+    "claim": "npx hardhat run scripts/claim-vault.ts --network sepolia",
     "run-agent": "npx ts-node scripts/run-agent.ts",
     "dashboard": "npx ts-node scripts/dashboard.ts",
     "test": "npx hardhat test"

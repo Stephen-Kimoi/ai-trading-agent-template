@@ -909,7 +909,7 @@ const ABI = {
     "function getBalance(uint256) view returns (uint256)",
     "function allocationPerTeam() view returns (uint256)",
   ],
-  router:     ["function getTradeRecord(uint256) view returns (uint256,uint256)"],
+  router:     ["function getIntentNonce(uint256) view returns (uint256)"],
   validation: [
     "function getAverageValidationScore(uint256) view returns (uint256)",
     "function attestationCount(uint256) view returns (uint256)",
@@ -1008,7 +1008,7 @@ async function fetchData() {
         reg.getAgent(id),
         vlt.hasClaimed(id).catch(()=>false),
         vlt.getBalance(id).catch(()=>ethers.BigNumber.from(0)),
-        rtr.getTradeRecord(id).catch(()=>[0,0]),
+        rtr.getIntentNonce(id).catch(()=>ethers.BigNumber.from(0)),
         val.getAverageValidationScore(id).catch(()=>ethers.BigNumber.from(0)),
         rep.getAverageScore(id).catch(()=>ethers.BigNumber.from(0)),
       ]);
@@ -1020,7 +1020,7 @@ async function fetchData() {
         active:      agent[6],
         claimed,
         balance:     parseFloat(ethers.utils.formatEther(balance)).toFixed(4),
-        trades:      Number(trade[0] || 0),
+        trades:      Number(trade || 0),
         valScore:    Number(valScore),
         repScore:    Number(repScore),
       };
